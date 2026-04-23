@@ -19,6 +19,6 @@ def get_book(book_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Book not found")
     return book
 
-@router.post("/", response_model=BookOut)
+@router.post("/", response_model=BookOut, status_code=201)
 def create_book(payload: BookCreate, db: Session = Depends(get_db)):
     return service.create_book(db, payload)

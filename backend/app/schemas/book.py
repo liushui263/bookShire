@@ -10,6 +10,7 @@ class BookOut(BaseModel):
     id: str
     title: str
     subtitle: Optional[str]
+    original_language: Optional[str]
 
     class Config:
         from_attributes = True
