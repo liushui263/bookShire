@@ -1,0 +1,21 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend/app:/app/app
+    environment:
+      - ENV=dev
+    ports:
+      - "8000:8000"
+
+  db:
+    image: postgis/postgis:15-3.4
+    ports:
+      - "5432:5432"
+
+  worker:
+    build: ./worker
+    volumes:
+      - ./backend/app:/app/app
