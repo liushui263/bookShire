@@ -1,3 +1,5 @@
+name: bookshire
+
 services:
   db:
     image: postgis/postgis:15-3.4
@@ -23,9 +25,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    ports:
+      - "8000:8000"
 
   worker:
     build: ./worker
 
 volumes:
   postgres_data:
+    name: bookshire_postgres_data

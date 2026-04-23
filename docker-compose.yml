@@ -1,3 +1,5 @@
+name: bookshire-dev
+
 services:
   db:
     image: postgis/postgis:15-3.4
@@ -28,3 +30,4 @@ services:
 
 volumes:
   postgres_data_dev:
+    name: bookshire_postgres_data_dev
