@@ -1,14 +1,4 @@
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
-    environment:
-      - ENV=prod
-    depends_on:
-      db:
-        condition: service_healthy
-
   db:
     image: postgis/postgis:15-3.4
     healthcheck:
@@ -22,6 +12,17 @@ services:
       POSTGRES_DB: bookdb
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    environment:
+      ENV: prod
+      DATABASE_URL: postgresql+psycopg2://book:book@db:5432/bookdb
+    depends_on:
+      db:
+        condition: service_healthy
 
   worker:
     build: ./worker

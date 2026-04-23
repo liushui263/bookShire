@@ -21,6 +21,7 @@ services:
       db:
         condition: service_healthy
     environment:
+      ENV: dev
       DATABASE_URL: postgresql+psycopg2://book:book@db:5432/bookdb
     ports:
       - "8000:8000"
