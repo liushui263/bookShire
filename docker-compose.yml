@@ -3,19 +3,22 @@ name: bookshire-dev
 services:
   db:
     image: postgis/postgis:15-3.4
+    container_name: bookshire-db
+    restart: always
+    environment:
+      POSTGRES_USER: bookshire
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: bookshire
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U book -d bookdb"]
+      test: ["CMD-SHELL", "pg_isready -U bookshire -d bookshire"]
       interval: 5s
       timeout: 5s
       retries: 10
-    environment:
-      POSTGRES_USER: book
-      POSTGRES_PASSWORD: book
-      POSTGRES_DB: bookdb
-    volumes:
-      - postgres_data_dev:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
 
   backend:
     build: ./backend
@@ -24,10 +27,11 @@ services:
         condition: service_healthy
     environment:
       ENV: dev
-      DATABASE_URL: postgresql+psycopg2://book:book@db:5432/bookdb
+      DATABASE_URL: postgresql://bookshire:password@db:5432/bookshire
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
 
 volumes:
-  postgres_data_dev:
-    name: bookshire_postgres_data_dev
+  postgres_data:

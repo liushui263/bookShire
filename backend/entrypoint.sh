@@ -5,7 +5,7 @@ echo "Waiting for database..."
 python wait_for_db.py
 
 echo "Running migrations..."
-alembic upgrade head
+# alembic upgrade head
 
 echo "Starting server..."
 if [ "${ENV:-dev}" = "prod" ]; then
