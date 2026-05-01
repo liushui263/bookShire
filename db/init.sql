@@ -95,7 +95,8 @@ CREATE TABLE IF NOT EXISTS contributors (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT contributors_name_not_empty CHECK (length(trim(name)) > 0)
 );
-
+CREATE INDEX IF NOT EXISTS idx_contributors_normalized_name ON contributors(normalized_name);
+CREATE INDEX IF NOT EXISTS idx_contributors_name_trgm ON contributors USING gin(normalized_name gin_trgm_ops);
 CREATE OR REPLACE FUNCTION normalize_contributor_name()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -110,33 +111,52 @@ CREATE TRIGGER trg_contributors_normalize
 BEFORE INSERT OR UPDATE ON contributors
 FOR EACH ROW
 EXECUTE FUNCTION normalize_contributor_name();
-CREATE INDEX IF NOT EXISTS idx_contributors_normalized_name ON contributors(normalized_name);
-CREATE INDEX IF NOT EXISTS idx_contributors_name_trgm ON contributors USING gin(normalized_name gin_trgm_ops);
-
 -- ============================================================
 -- 5. Books / Editions / Descriptions
 -- ============================================================
 CREATE TABLE IF NOT EXISTS books (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
     title TEXT NOT NULL,
     subtitle TEXT,
+
     normalized_title TEXT,
+
     original_language VARCHAR(10),
+
     canonical_cover_url TEXT,
     canonical_description TEXT,
     canonical_description_language VARCHAR(10),
+
     categories TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
-    metadata_source metadata_source NOT NULL DEFAULT 'user',
-    external_ids JSONB NOT NULL DEFAULT '{}'::JSONB,
-    avg_rating NUMERIC(3,2) NOT NULL DEFAULT 0 CHECK (avg_rating >= 0 AND avg_rating <= 5),
-    rating_count INTEGER NOT NULL DEFAULT 0 CHECK (rating_count >= 0),
-    popularity_score NUMERIC(12,4) NOT NULL DEFAULT 0,
+
+    metadata_source TEXT,
+    external_ids JSONB NOT NULL DEFAULT '{}'::jsonb,
+    avg_rating NUMERIC(3,2) DEFAULT 0,
+    rating_count INTEGER DEFAULT 0,
+    popularity_score NUMERIC(12,4) DEFAULT 0,
+
     search_vector TSVECTOR,
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT books_title_not_empty CHECK (length(trim(title)) > 0)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE OR REPLACE FUNCTION normalize_book_title()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.normalized_title := lower(unaccent(NEW.title));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_books_normalize ON books;
+
+CREATE TRIGGER trg_books_normalize
+BEFORE INSERT OR UPDATE ON books
+FOR EACH ROW
+EXECUTE FUNCTION normalize_book_title();
+
 DROP TRIGGER IF EXISTS trg_books_updated_at ON books;
 CREATE TRIGGER trg_books_updated_at BEFORE UPDATE ON books FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE INDEX IF NOT EXISTS idx_books_normalized_title ON books(normalized_title);
@@ -157,8 +177,13 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
 DROP TRIGGER IF EXISTS trg_books_search_vector ON books;
-CREATE TRIGGER trg_books_search_vector BEFORE INSERT OR UPDATE ON books FOR EACH ROW EXECUTE FUNCTION update_books_search_vector();
+
+CREATE TRIGGER trg_books_search_vector
+BEFORE INSERT OR UPDATE ON books
+FOR EACH ROW
+EXECUTE FUNCTION update_books_search_vector();
 
 CREATE TABLE IF NOT EXISTS book_contributors (
     book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,

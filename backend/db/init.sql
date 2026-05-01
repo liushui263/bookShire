@@ -142,7 +142,6 @@ CREATE TABLE IF NOT EXISTS books (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
 CREATE OR REPLACE FUNCTION normalize_book_title()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -167,20 +166,6 @@ CREATE INDEX IF NOT EXISTS idx_books_original_language ON books(original_languag
 CREATE INDEX IF NOT EXISTS idx_books_categories ON books USING gin(categories);
 CREATE INDEX IF NOT EXISTS idx_books_tags ON books USING gin(tags);
 CREATE INDEX IF NOT EXISTS idx_books_external_ids ON books USING gin(external_ids);
-CREATE OR REPLACE FUNCTION normalize_book_title()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.normalized_title := lower(unaccent(NEW.title));
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_books_normalize ON books;
-
-CREATE TRIGGER trg_books_normalize
-BEFORE INSERT OR UPDATE ON books
-FOR EACH ROW
-EXECUTE FUNCTION normalize_book_title();
 
 CREATE OR REPLACE FUNCTION update_books_search_vector()
 RETURNS TRIGGER AS $$
