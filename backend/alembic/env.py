@@ -12,6 +12,10 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from app.core.config import settings
 from app.db.base import Base
 from app.models import *  # noqa: F401,F403 - register models for metadata
+from app.models.book import Book
+from app.models.user import User
+from app.models.review import Review
+from app.models.user_book import UserBook
 
 target_metadata = Base.metadata
 

@@ -1,15 +1,36 @@
-from app.repositories.book_repo import BookRepository
+from uuid import UUID
 
-class BookService:
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
-    def __init__(self):
-        self.repo = BookRepository()
+from app.repositories.book_repo import (
+    create_book_with_edition,
+    create_user_book,
+    get_book,
+    list_books,
+    list_user_books,
+)
+from app.schemas.book import BookCreate, UserBookCreate
 
-    def list_books(self, db):
-        return self.repo.get_all(db)
 
-    def get_book(self, db, book_id):
-        return self.repo.get(db, book_id)
+def create_book_service(db: Session, data: BookCreate):
+    return create_book_with_edition(db, data)
 
-    def create_book(self, db, data):
-        return self.repo.create(db, data)
+
+def list_books_service(db: Session, limit: int = 50, offset: int = 0):
+    return list_books(db, limit=limit, offset=offset)
+
+
+def get_book_service(db: Session, book_id: UUID):
+    book = get_book(db, book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return book
+
+
+def create_user_book_service(db: Session, data: UserBookCreate):
+    return create_user_book(db, data)
+
+
+def list_user_books_service(db: Session, user_id: UUID):
+    return list_user_books(db, user_id)

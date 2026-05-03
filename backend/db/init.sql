@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS books (
     tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
 
     metadata_source TEXT,
-
+    external_ids JSONB NOT NULL DEFAULT '{}'::jsonb,
     avg_rating NUMERIC(3,2) DEFAULT 0,
     rating_count INTEGER DEFAULT 0,
     popularity_score NUMERIC(12,4) DEFAULT 0,

@@ -19,7 +19,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
+  adminer:
+    image: adminer:latest
+    container_name: bookshire-adminer
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+  
   backend:
     build: ./backend
     depends_on:
