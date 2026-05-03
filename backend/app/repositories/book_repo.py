@@ -1,8 +1,9 @@
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
 from app.models.book import Book, Edition
 from app.models.user_book import UserBook
 from app.schemas.book import BookCreate, UserBookCreate
@@ -67,11 +68,11 @@ def list_user_books(db: Session, user_id: UUID) -> List[UserBook]:
     return db.query(UserBook).filter(UserBook.user_id == user_id).all()
 
 
-def get_book_by_id(db: Session, book_id: str):
+def get_book_by_id(db: Session, book_id: UUID) -> Optional[Book]:
     return db.query(Book).filter(Book.id == book_id).first()
 
 
-def search_books(db: Session, q: str, limit: int = 20):
+def search_books(db: Session, q: str, limit: int = 20) -> List[Book]:
     keyword = f"%{q.strip()}%"
 
     filters = []
