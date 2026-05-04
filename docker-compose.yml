@@ -38,6 +38,7 @@ services:
     environment:
       ENV: dev
       DATABASE_URL: postgresql://bookshire:password@db:5432/bookshire
+      SEED_DATA: "true"
     ports:
       - "8000:8000"
     volumes:
