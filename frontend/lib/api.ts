@@ -167,3 +167,16 @@ export async function searchBooks(query: string): Promise<Book[]> {
     `${getApiBaseUrl()}/api/v1/books/search?q=${encodeURIComponent(query)}`
   );
 }
+export async function addBookToShelf(
+  userId: string,
+  bookId: string
+): Promise<UserBook> {
+  return fetchJson<UserBook>(
+    `${getApiBaseUrl()}/api/v1/users/${encodeURIComponent(
+      userId
+    )}/books/by-book/${encodeURIComponent(bookId)}`,
+    {
+      method: "POST",
+    }
+  );
+}

@@ -30,6 +30,13 @@ def add_user_book(
 ):
     return user_book_service.add_user_book(db, user_id, payload)
 
+@router.post("/by-book/{book_id}", response_model=UserBookOut, status_code=status.HTTP_201_CREATED)
+def add_user_book_by_book_id(
+    user_id: UUID,
+    book_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return user_book_service.add_user_book_by_book_id(db, user_id, book_id)
 
 @router.patch("/{user_book_id}", response_model=UserBookOut)
 def update_user_book(

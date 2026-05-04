@@ -87,3 +87,22 @@ def soft_delete_user_book(db: Session, user_book: UserBook):
     db.commit()
     db.refresh(user_book)
     return user_book
+
+
+def get_existing_user_book_by_edition(db: Session, user_id: UUID, edition_id: UUID):
+    return (
+        db.query(UserBook)
+        .filter(UserBook.user_id == user_id)
+        .filter(UserBook.edition_id == edition_id)
+        .filter(UserBook.deleted_at.is_(None))
+        .first()
+    )
+
+
+def get_first_edition_by_book_id(db: Session, book_id: UUID):
+    return (
+        db.query(Edition)
+        .filter(Edition.book_id == book_id)
+        .order_by(Edition.created_at.asc() if hasattr(Edition, "created_at") else Edition.id.asc())
+        .first()
+    )

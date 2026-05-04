@@ -197,6 +197,24 @@ BOOKS = [
 def seed_books():
     engine = create_engine(DATABASE_URL)
 
+    insert_demo_user_sql = text(
+        """
+        INSERT INTO users (
+            id,
+            email,
+            username,
+            display_name
+        )
+        VALUES (
+            '86f7818b-788e-4d0b-9e81-9c8bc918ac44',
+            'demo@bookshire.local',
+            'demo',
+            'Demo User'
+        )
+        ON CONFLICT (id) DO NOTHING
+        """
+    )
+
     insert_book_sql = text(
         """
         INSERT INTO books (
@@ -268,6 +286,8 @@ def seed_books():
     )
 
     with engine.begin() as conn:
+        conn.execute(insert_demo_user_sql)
+
         for book in BOOKS:
             external_ids = {
                 "isbn_10": book["isbn_10"],
@@ -309,7 +329,7 @@ def seed_books():
                 },
             )
 
-    print(f"Seeded {len(BOOKS)} books/editions if missing.")
+    print(f"Seeded demo user and {len(BOOKS)} books/editions if missing.")
 
 
 if __name__ == "__main__":

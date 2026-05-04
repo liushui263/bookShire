@@ -81,3 +81,51 @@ def remove_user_book(db: Session, user_id: UUID, user_book_id: UUID):
         raise HTTPException(status_code=404, detail="User book not found")
 
     return user_book_repo.soft_delete_user_book(db, user_book)
+
+
+def add_user_book_by_book_id(db: Session, user_id: UUID, book_id: UUID, status: str = "unread"):
+    from app.models.book import Book, Edition
+
+    _validate_status(status)
+
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    edition = user_book_repo.get_first_edition_by_book_id(db, book_id)
+
+    if not edition:
+        edition = Edition(
+            book_id=book.id,
+            title=book.title,
+            subtitle=book.subtitle,
+            language=book.original_language or "unknown",
+            format="unknown",
+        )
+        db.add(edition)
+        db.commit()
+        db.refresh(edition)
+
+    existing = user_book_repo.get_existing_user_book_by_edition(
+        db, user_id, edition.id
+    )
+    if existing:
+        return existing
+
+    user_book = UserBook(
+        user_id=user_id,
+        edition_id=edition.id,
+        status=status,
+        visibility="private",
+        exchangeable=False,
+        personal_tags=[],
+    )
+
+    try:
+        return user_book_repo.create_user_book(db, user_book)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="This book is already in the user's shelf or referenced data does not exist.",
+        ) from exc
