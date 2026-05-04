@@ -46,7 +46,7 @@ export type ReadingStatus =
   | "read"
   | "abandoned";
 
-export type UserBook = {
+  export type UserBook = {
   id: string;
   user_id: string;
   edition_id: string;
@@ -62,6 +62,17 @@ export type UserBook = {
   finished_at?: string | null;
   created_at: string;
   updated_at: string;
+
+  book_id: string;
+  book_title: string;
+  book_subtitle?: string | null;
+  book_cover_url?: string | null;
+  book_tags: string[];
+  book_categories: string[];
+
+  edition_title?: string | null;
+  edition_language?: string | null;
+  edition_cover_url?: string | null;
 };
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {

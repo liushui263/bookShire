@@ -5,14 +5,19 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.user_book import UserBookCreate, UserBookOut, UserBookUpdate
+from app.schemas.user_book import (
+    UserBookCreate,
+    UserBookOut,
+    UserBookShelfOut,
+    UserBookUpdate,
+)
 from app.services import user_book_service
 
 
 router = APIRouter(prefix="/users/{user_id}/books", tags=["user_books"])
 
 
-@router.get("", response_model=List[UserBookOut])
+@router.get("", response_model=List[UserBookShelfOut])
 def list_user_books(user_id: UUID, db: Session = Depends(get_db)):
     return user_book_service.list_user_books(db, user_id)
 

@@ -82,7 +82,7 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
         )
       );
 
-      setMessage(`Updated shelf item ${userBookId} to ${STATUS_LABELS[status]}.`);
+      setMessage(`Updated "${item.book_title}" to ${STATUS_LABELS[status]}.`);
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -108,7 +108,7 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
         current.filter((entry) => entry.id !== userBookId)
       );
 
-      setMessage(`Removed shelf item ${userBookId}.`);
+      setMessage(`Removed "${item.book_title}" from your shelf.`);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Failed to remove shelf item."
@@ -132,7 +132,7 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
             Your shelf is empty.
           </h2>
           <p className="mt-2 text-gray-600">
-            Add an edition to your shelf from the backend or a book detail page.
+            Add an edition to your shelf from a book detail page.
           </p>
           <Link
             href="/"
@@ -162,133 +162,155 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
                 <div className="grid gap-5 md:grid-cols-2">
                   {grouped[status].map((item) => {
                     const isBusy = busyKey?.startsWith(item.id);
+                    const tags = [
+                      ...(item.book_tags || []),
+                      ...(item.book_categories || []),
+                    ];
+                    const coverUrl =
+                      item.book_cover_url || item.edition_cover_url || null;
 
                     return (
                       <article
                         key={item.id}
                         className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
                       >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                              Shelf Item
-                            </p>
-                            <h3 className="mt-2 break-all text-lg font-semibold text-gray-950">
-                              {item.id}
-                            </h3>
-                          </div>
+                        <div className="flex gap-4">
+                          <Link
+                            href={`/books/${item.book_id}`}
+                            className="flex h-28 w-20 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-sm text-gray-400"
+                          >
+                            {coverUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={coverUrl}
+                                alt={item.book_title}
+                                className="h-full w-full rounded-xl object-cover"
+                              />
+                            ) : (
+                              <span>Cover</span>
+                            )}
+                          </Link>
 
-                          <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">
-                            {STATUS_LABELS[item.status]}
-                          </span>
-                        </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <Link
+                                  href={`/books/${item.book_id}`}
+                                  className="line-clamp-2 text-lg font-semibold text-gray-950 hover:underline"
+                                >
+                                  {item.book_title}
+                                </Link>
 
-                        <dl className="mt-5 space-y-3 text-sm">
-                          <div>
-                            <dt className="font-semibold text-gray-900">
-                              Edition ID
-                            </dt>
-                            <dd className="mt-1 break-all text-gray-600">
-                              {item.edition_id}
-                            </dd>
-                          </div>
+                                {item.book_subtitle && (
+                                  <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                                    {item.book_subtitle}
+                                  </p>
+                                )}
 
-                          <div className="grid gap-3 md:grid-cols-2">
-                            <div>
-                              <dt className="font-semibold text-gray-900">
-                                Condition
-                              </dt>
-                              <dd className="mt-1 text-gray-600">
-                                {item.condition ?? "Unknown"}
-                              </dd>
+                                {item.edition_language && (
+                                  <p className="mt-2 text-xs text-gray-500">
+                                    Edition language: {item.edition_language}
+                                  </p>
+                                )}
+                              </div>
+
+                              <span className="shrink-0 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">
+                                {STATUS_LABELS[item.status]}
+                              </span>
                             </div>
 
-                            <div>
-                              <dt className="font-semibold text-gray-900">
-                                Visibility
-                              </dt>
-                              <dd className="mt-1 text-gray-600">
-                                {item.visibility}
-                              </dd>
-                            </div>
-                          </div>
-
-                          <div>
-                            <dt className="font-semibold text-gray-900">
-                              Tags
-                            </dt>
-                            <dd className="mt-2 flex flex-wrap gap-2">
-                              {item.personal_tags.length > 0 ? (
-                                item.personal_tags.map((tag) => (
+                            {tags.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {Array.from(new Set(tags)).slice(0, 5).map((tag) => (
                                   <span
                                     key={tag}
                                     className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600"
                                   >
                                     {tag}
                                   </span>
-                                ))
-                              ) : (
-                                <span className="text-gray-500">No tags</span>
-                              )}
-                            </dd>
-                          </div>
+                                ))}
+                              </div>
+                            )}
 
-                          <div>
-                            <dt className="font-semibold text-gray-900">
-                              Notes
-                            </dt>
-                            <dd className="mt-1 text-gray-600">
-                              {item.personal_notes_summary || "No notes"}
-                            </dd>
-                          </div>
+                            <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+                              <div>
+                                <dt className="font-semibold text-gray-900">
+                                  Condition
+                                </dt>
+                                <dd className="mt-1 text-gray-600">
+                                  {item.condition ?? "Unknown"}
+                                </dd>
+                              </div>
 
-                          <div className="grid gap-3 md:grid-cols-2">
-                            <div>
-                              <dt className="font-semibold text-gray-900">
-                                Created
-                              </dt>
-                              <dd className="mt-1 text-gray-600">
-                                {formatDate(item.created_at)}
-                              </dd>
+                              <div>
+                                <dt className="font-semibold text-gray-900">
+                                  Visibility
+                                </dt>
+                                <dd className="mt-1 text-gray-600">
+                                  {item.visibility}
+                                </dd>
+                              </div>
+
+                              <div>
+                                <dt className="font-semibold text-gray-900">
+                                  Updated
+                                </dt>
+                                <dd className="mt-1 text-gray-600">
+                                  {formatDate(item.updated_at)}
+                                </dd>
+                              </div>
+
+                              <div>
+                                <dt className="font-semibold text-gray-900">
+                                  Notes
+                                </dt>
+                                <dd className="mt-1 line-clamp-2 text-gray-600">
+                                  {item.personal_notes_summary || "No notes"}
+                                </dd>
+                              </div>
+                            </dl>
+
+                            {item.personal_tags.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {item.personal_tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="rounded-full bg-gray-950 px-2.5 py-1 text-xs text-white"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="mt-5 flex flex-wrap gap-2">
+                              <select
+                                value={item.status}
+                                disabled={isBusy}
+                                onChange={(event) =>
+                                  handleStatusChange(
+                                    item,
+                                    event.target.value as ReadingStatus
+                                  )
+                                }
+                                className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                              >
+                                {STATUS_ORDER.map((option) => (
+                                  <option key={option} value={option}>
+                                    {STATUS_LABELS[option]}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <button
+                                disabled={isBusy}
+                                onClick={() => handleRemove(item)}
+                                className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                              >
+                                Remove
+                              </button>
                             </div>
-
-                            <div>
-                              <dt className="font-semibold text-gray-900">
-                                Updated
-                              </dt>
-                              <dd className="mt-1 text-gray-600">
-                                {formatDate(item.updated_at)}
-                              </dd>
-                            </div>
                           </div>
-                        </dl>
-
-                        <div className="mt-5 flex flex-wrap gap-2">
-                          <select
-                            value={item.status}
-                            disabled={isBusy}
-                            onChange={(event) =>
-                              handleStatusChange(
-                                item,
-                                event.target.value as ReadingStatus
-                              )
-                            }
-                            className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-                          >
-                            {STATUS_ORDER.map((option) => (
-                              <option key={option} value={option}>
-                                {STATUS_LABELS[option]}
-                              </option>
-                            ))}
-                          </select>
-
-                          <button
-                            disabled={isBusy}
-                            onClick={() => handleRemove(item)}
-                            className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
-                          >
-                            Remove
-                          </button>
                         </div>
                       </article>
                     );
