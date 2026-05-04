@@ -1,5 +1,14 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+function getApiBaseUrl() {
+  if (typeof window === "undefined") {
+    return (
+      process.env.INTERNAL_API_BASE_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      "http://localhost:8000"
+    );
+  }
+
+  return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+}
 
 export type Book = {
   id: string;
@@ -102,24 +111,24 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getBooks(): Promise<Book[]> {
-  return fetchJson<Book[]>(`${API_BASE_URL}/api/v1/books/`);
+  return fetchJson<Book[]>(`${getApiBaseUrl()}/api/v1/books/`);
 }
 
 export async function getBook(id: string): Promise<Book> {
   return fetchJson<Book>(
-    `${API_BASE_URL}/api/v1/books/${encodeURIComponent(id)}`
+    `${getApiBaseUrl()}/api/v1/books/${encodeURIComponent(id)}`
   );
 }
 
 export async function getBookReviews(bookId: string): Promise<Review[]> {
   return fetchJson<Review[]>(
-    `${API_BASE_URL}/api/v1/books/${encodeURIComponent(bookId)}/reviews`
+    `${getApiBaseUrl()}/api/v1/books/${encodeURIComponent(bookId)}/reviews`
   );
 }
 
 export async function getUserBooks(userId: string): Promise<UserBook[]> {
   return fetchJson<UserBook[]>(
-    `${API_BASE_URL}/api/v1/users/${encodeURIComponent(userId)}/books`
+    `${getApiBaseUrl()}/api/v1/users/${encodeURIComponent(userId)}/books`
   );
 }
 
@@ -129,7 +138,7 @@ export async function updateUserBookStatus(
   status: ReadingStatus
 ): Promise<UserBook> {
   return fetchJson<UserBook>(
-    `${API_BASE_URL}/api/v1/users/${encodeURIComponent(
+    `${getApiBaseUrl()}/api/v1/users/${encodeURIComponent(
       userId
     )}/books/${encodeURIComponent(userBookId)}`,
     {
@@ -144,11 +153,17 @@ export async function removeUserBook(
   userBookId: string
 ): Promise<UserBook> {
   return fetchJson<UserBook>(
-    `${API_BASE_URL}/api/v1/users/${encodeURIComponent(
+    `${getApiBaseUrl()}/api/v1/users/${encodeURIComponent(
       userId
     )}/books/${encodeURIComponent(userBookId)}`,
     {
       method: "DELETE",
     }
+  );
+}
+
+export async function searchBooks(query: string): Promise<Book[]> {
+  return fetchJson<Book[]>(
+    `${getApiBaseUrl()}/api/v1/books/search?q=${encodeURIComponent(query)}`
   );
 }
