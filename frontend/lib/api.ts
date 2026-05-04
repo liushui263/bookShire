@@ -14,6 +14,7 @@ export type Book = {
   description?: string | null;
   canonical_description?: string | null;
 
+  avg_rating?: number | null;
   rating_avg?: number | null;
   rating_count?: number | null;
 
@@ -74,7 +75,16 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    throw new Error(`API request failed: ${res.status} ${res.statusText}`);
+    let detail = `${res.status} ${res.statusText}`;
+
+    try {
+      const body = await res.json();
+      detail = body.detail ? JSON.stringify(body.detail) : JSON.stringify(body);
+    } catch {
+      // Keep default HTTP detail.
+    }
+
+    throw new Error(`API request failed: ${detail}`);
   }
 
   return res.json();

@@ -6,16 +6,16 @@ import type { ReadingStatus, UserBook } from "@/lib/api";
 import { removeUserBook, updateUserBookStatus } from "@/lib/api";
 
 const STATUS_LABELS: Record<ReadingStatus, string> = {
-  want_to_read: "Want to Read",
+  unread: "Unread",
   reading: "Reading",
-  finished: "Finished",
+  read: "Read",
   abandoned: "Abandoned",
 };
 
 const STATUS_ORDER: ReadingStatus[] = [
-  "want_to_read",
+  "unread",
   "reading",
-  "finished",
+  "read",
   "abandoned",
 ];
 
@@ -24,30 +24,19 @@ type ShelfClientProps = {
   userId: string;
 };
 
-function getBookId(item: UserBook) {
-  return item.book?.id || item.book_id;
-}
+function formatDate(value?: string | null) {
+  if (!value) return "Unknown";
 
-function getBookTitle(item: UserBook) {
-  return item.book?.title || item.title || `Book ${item.book_id}`;
-}
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
 
-function getBookSubtitle(item: UserBook) {
-  return item.book?.subtitle || item.subtitle || null;
-}
-
-function getBookCoverUrl(item: UserBook) {
-  return (
-    item.book?.cover_url ||
-    item.book?.canonical_cover_url ||
-    item.cover_url ||
-    item.canonical_cover_url ||
-    null
-  );
-}
-
-function getBookTags(item: UserBook) {
-  return item.book?.tags || item.book?.categories || item.tags || item.categories || [];
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
@@ -57,46 +46,43 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
 
   const grouped = useMemo(() => {
     const result: Record<ReadingStatus, UserBook[]> = {
-      want_to_read: [],
+      unread: [],
       reading: [],
-      finished: [],
+      read: [],
       abandoned: [],
     };
 
     for (const item of items) {
-      const status = item.status || "want_to_read";
-      if (result[status]) {
-        result[status].push(item);
-      }
+      const status = item.status || "unread";
+      result[status].push(item);
     }
 
     return result;
   }, [items]);
 
   async function handleStatusChange(item: UserBook, status: ReadingStatus) {
-    const bookId = getBookId(item);
-    const key = `${bookId}:status`;
+    const userBookId = item.id;
+    const key = `${userBookId}:status`;
 
     setBusyKey(key);
     setMessage(null);
 
     try {
-      const updated = await updateUserBookStatus(userId, bookId, status);
+      const updated = await updateUserBookStatus(userId, userBookId, status);
 
       setItems((current) =>
         current.map((entry) =>
-          getBookId(entry) === bookId
+          entry.id === userBookId
             ? {
                 ...entry,
                 ...updated,
                 status,
-                book: entry.book || updated.book,
               }
             : entry
         )
       );
 
-      setMessage(`Updated "${getBookTitle(item)}" to ${STATUS_LABELS[status]}.`);
+      setMessage(`Updated shelf item ${userBookId} to ${STATUS_LABELS[status]}.`);
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -109,23 +95,23 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
   }
 
   async function handleRemove(item: UserBook) {
-    const bookId = getBookId(item);
-    const key = `${bookId}:remove`;
+    const userBookId = item.id;
+    const key = `${userBookId}:remove`;
 
     setBusyKey(key);
     setMessage(null);
 
     try {
-      await removeUserBook(userId, bookId);
+      await removeUserBook(userId, userBookId);
 
       setItems((current) =>
-        current.filter((entry) => getBookId(entry) !== bookId)
+        current.filter((entry) => entry.id !== userBookId)
       );
 
-      setMessage(`Removed "${getBookTitle(item)}" from your shelf.`);
+      setMessage(`Removed shelf item ${userBookId}.`);
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Failed to remove book."
+        error instanceof Error ? error.message : "Failed to remove shelf item."
       );
     } finally {
       setBusyKey(null);
@@ -146,7 +132,7 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
             Your shelf is empty.
           </h2>
           <p className="mt-2 text-gray-600">
-            Open a book detail page and add books to your shelf.
+            Add an edition to your shelf from the backend or a book detail page.
           </p>
           <Link
             href="/"
@@ -175,90 +161,134 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
               ) : (
                 <div className="grid gap-5 md:grid-cols-2">
                   {grouped[status].map((item) => {
-                    const bookId = getBookId(item);
-                    const title = getBookTitle(item);
-                    const subtitle = getBookSubtitle(item);
-                    const coverUrl = getBookCoverUrl(item);
-                    const tags = getBookTags(item);
-                    const isBusy = busyKey?.startsWith(bookId);
+                    const isBusy = busyKey?.startsWith(item.id);
 
                     return (
                       <article
-                        key={item.id || bookId}
+                        key={item.id}
                         className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
                       >
-                        <div className="flex gap-4">
-                          <Link
-                            href={`/books/${bookId}`}
-                            className="flex h-28 w-20 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-sm text-gray-400"
-                          >
-                            {coverUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={coverUrl}
-                                alt={title}
-                                className="h-full w-full rounded-xl object-cover"
-                              />
-                            ) : (
-                              <span>Cover</span>
-                            )}
-                          </Link>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Shelf Item
+                            </p>
+                            <h3 className="mt-2 break-all text-lg font-semibold text-gray-950">
+                              {item.id}
+                            </h3>
+                          </div>
 
-                          <div className="min-w-0 flex-1">
-                            <Link
-                              href={`/books/${bookId}`}
-                              className="line-clamp-2 text-lg font-semibold text-gray-950 hover:underline"
-                            >
-                              {title}
-                            </Link>
+                          <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">
+                            {STATUS_LABELS[item.status]}
+                          </span>
+                        </div>
 
-                            {subtitle && (
-                              <p className="mt-1 line-clamp-2 text-sm text-gray-500">
-                                {subtitle}
-                              </p>
-                            )}
+                        <dl className="mt-5 space-y-3 text-sm">
+                          <div>
+                            <dt className="font-semibold text-gray-900">
+                              Edition ID
+                            </dt>
+                            <dd className="mt-1 break-all text-gray-600">
+                              {item.edition_id}
+                            </dd>
+                          </div>
 
-                            {tags.length > 0 && (
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {tags.slice(0, 3).map((tag) => (
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div>
+                              <dt className="font-semibold text-gray-900">
+                                Condition
+                              </dt>
+                              <dd className="mt-1 text-gray-600">
+                                {item.condition ?? "Unknown"}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="font-semibold text-gray-900">
+                                Visibility
+                              </dt>
+                              <dd className="mt-1 text-gray-600">
+                                {item.visibility}
+                              </dd>
+                            </div>
+                          </div>
+
+                          <div>
+                            <dt className="font-semibold text-gray-900">
+                              Tags
+                            </dt>
+                            <dd className="mt-2 flex flex-wrap gap-2">
+                              {item.personal_tags.length > 0 ? (
+                                item.personal_tags.map((tag) => (
                                   <span
                                     key={tag}
                                     className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600"
                                   >
                                     {tag}
                                   </span>
-                                ))}
-                              </div>
-                            )}
+                                ))
+                              ) : (
+                                <span className="text-gray-500">No tags</span>
+                              )}
+                            </dd>
+                          </div>
 
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              <select
-                                value={item.status}
-                                disabled={isBusy}
-                                onChange={(event) =>
-                                  handleStatusChange(
-                                    item,
-                                    event.target.value as ReadingStatus
-                                  )
-                                }
-                                className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-                              >
-                                {STATUS_ORDER.map((option) => (
-                                  <option key={option} value={option}>
-                                    {STATUS_LABELS[option]}
-                                  </option>
-                                ))}
-                              </select>
+                          <div>
+                            <dt className="font-semibold text-gray-900">
+                              Notes
+                            </dt>
+                            <dd className="mt-1 text-gray-600">
+                              {item.personal_notes_summary || "No notes"}
+                            </dd>
+                          </div>
 
-                              <button
-                                disabled={isBusy}
-                                onClick={() => handleRemove(item)}
-                                className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
-                              >
-                                Remove
-                              </button>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div>
+                              <dt className="font-semibold text-gray-900">
+                                Created
+                              </dt>
+                              <dd className="mt-1 text-gray-600">
+                                {formatDate(item.created_at)}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="font-semibold text-gray-900">
+                                Updated
+                              </dt>
+                              <dd className="mt-1 text-gray-600">
+                                {formatDate(item.updated_at)}
+                              </dd>
                             </div>
                           </div>
+                        </dl>
+
+                        <div className="mt-5 flex flex-wrap gap-2">
+                          <select
+                            value={item.status}
+                            disabled={isBusy}
+                            onChange={(event) =>
+                              handleStatusChange(
+                                item,
+                                event.target.value as ReadingStatus
+                              )
+                            }
+                            className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                          >
+                            {STATUS_ORDER.map((option) => (
+                              <option key={option} value={option}>
+                                {STATUS_LABELS[option]}
+                              </option>
+                            ))}
+                          </select>
+
+                          <button
+                            disabled={isBusy}
+                            onClick={() => handleRemove(item)}
+                            className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                          >
+                            Remove
+                          </button>
                         </div>
                       </article>
                     );

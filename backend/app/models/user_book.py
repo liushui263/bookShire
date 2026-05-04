@@ -58,3 +58,5 @@ class UserBook(Base):
         primaryjoin="foreign(UserBook.edition_id) == Edition.id",
         back_populates="user_books",
     )
+    
+    

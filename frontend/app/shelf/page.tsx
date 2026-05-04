@@ -45,8 +45,8 @@ export default async function ShelfPage() {
             Track your reading life.
           </h1>
           <p className="mt-4 max-w-2xl text-lg leading-8 text-gray-600">
-            Manage books you want to read, books in progress, finished books,
-            and abandoned books.
+            Manage editions in your personal shelf. This page currently uses
+            the backend edition-based shelf API.
           </p>
         </header>
 
