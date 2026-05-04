@@ -1,0 +1,133 @@
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
+export type Book = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  normalized_title?: string | null;
+  original_language?: string | null;
+
+  cover_url?: string | null;
+  canonical_cover_url?: string | null;
+
+  description?: string | null;
+  canonical_description?: string | null;
+
+  rating_avg?: number | null;
+  rating_count?: number | null;
+
+  tags?: string[] | null;
+  categories?: string[] | null;
+
+  publisher?: string | null;
+  published_date?: string | null;
+  isbn_10?: string | null;
+  isbn_13?: string | null;
+  page_count?: number | null;
+};
+
+export type Review = {
+  id: string;
+  user_id: string;
+  book_id: string;
+  edition_id?: string | null;
+  rating: number;
+  content?: string | null;
+  visibility: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReadingStatus =
+  | "unread"
+  | "reading"
+  | "read"
+  | "abandoned";
+
+export type UserBook = {
+  id: string;
+  user_id: string;
+  edition_id: string;
+  status: ReadingStatus;
+  condition?: number | null;
+  location_text?: string | null;
+  exchangeable: boolean;
+  visibility: string;
+  personal_tags: string[];
+  personal_notes_summary?: string | null;
+  acquired_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    cache: "no-store",
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`API request failed: ${res.status} ${res.statusText}`);
+  }
+
+  return res.json();
+}
+
+export async function getBooks(): Promise<Book[]> {
+  return fetchJson<Book[]>(`${API_BASE_URL}/api/v1/books/`);
+}
+
+export async function getBook(id: string): Promise<Book> {
+  return fetchJson<Book>(
+    `${API_BASE_URL}/api/v1/books/${encodeURIComponent(id)}`
+  );
+}
+
+export async function getBookReviews(bookId: string): Promise<Review[]> {
+  return fetchJson<Review[]>(
+    `${API_BASE_URL}/api/v1/books/${encodeURIComponent(bookId)}/reviews`
+  );
+}
+
+export async function getUserBooks(userId: string): Promise<UserBook[]> {
+  return fetchJson<UserBook[]>(
+    `${API_BASE_URL}/api/v1/users/${encodeURIComponent(userId)}/books`
+  );
+}
+
+export async function updateUserBookStatus(
+  userId: string,
+  userBookId: string,
+  status: ReadingStatus
+): Promise<UserBook> {
+  return fetchJson<UserBook>(
+    `${API_BASE_URL}/api/v1/users/${encodeURIComponent(
+      userId
+    )}/books/${encodeURIComponent(userBookId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }
+  );
+}
+
+export async function removeUserBook(
+  userId: string,
+  userBookId: string
+): Promise<UserBook> {
+  return fetchJson<UserBook>(
+    `${API_BASE_URL}/api/v1/users/${encodeURIComponent(
+      userId
+    )}/books/${encodeURIComponent(userBookId)}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
