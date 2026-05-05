@@ -21,12 +21,35 @@ const DEMO_USER_ID =
   process.env.EXPO_PUBLIC_DEMO_USER_ID ||
   "86f7818b-788e-4d0b-9e81-9c8bc918ac44";
 
-const STATUS_OPTIONS: { value: ReadingStatus; label: string }[] = [
+type ShelfStatus =
+  | "unread"
+  | "want_to_read"
+  | "reading"
+  | "read"
+  | "finished"
+  | "abandoned";
+
+const STATUS_OPTIONS: { value: ShelfStatus; label: string }[] = [
   { value: "unread", label: "Want to Read" },
   { value: "reading", label: "Reading" },
-  { value: "read", label: "Finished" },
+  { value: "finished", label: "Finished" },
   { value: "abandoned", label: "Abandoned" },
 ];
+
+function normalizeStatus(status?: string | null): ShelfStatus {
+  if (status === "want_to_read") return "unread";
+  if (status === "read") return "finished";
+  if (status === "finished") return "finished";
+  if (status === "reading") return "reading";
+  if (status === "abandoned") return "abandoned";
+  return "unread";
+}
+
+function toApiStatus(status: ShelfStatus): ReadingStatus {
+  if (status === "want_to_read") return "unread" as ReadingStatus;
+  if (status === "finished") return "read" as ReadingStatus;
+  return status as ReadingStatus;
+}
 
 function getShelfTitle(item: UserBook): string {
   return (
@@ -64,20 +87,23 @@ export default function MobileShelfScreen() {
     }
   }
 
-  async function handleStatusChange(userBookId: string, status: ReadingStatus) {
+  async function handleStatusChange(userBookId: string, status: ShelfStatus) {
     try {
       setUpdatingId(userBookId);
       setMessage(null);
       setError(null);
 
+      const apiStatus = toApiStatus(status);
       const updated = await updateUserBookStatus(
         DEMO_USER_ID,
         userBookId,
-        status
+        apiStatus
       );
 
       setItems((current) =>
-        current.map((item) => (item.id === userBookId ? { ...item, ...updated, status } : item))
+        current.map((item) =>
+          item.id === userBookId ? { ...item, ...updated, status: apiStatus } : item
+        )
       );
 
       setMessage("Shelf item updated.");
@@ -115,7 +141,7 @@ export default function MobileShelfScreen() {
   const groupedItems = useMemo(() => {
     return STATUS_OPTIONS.map((status) => ({
       ...status,
-      items: items.filter((item) => item.status === status.value),
+      items: items.filter((item) => normalizeStatus(item.status) === status.value),
     }));
   }, [items]);
 
@@ -214,7 +240,7 @@ export default function MobileShelfScreen() {
 
                     <View style={styles.statusButtons}>
                       {STATUS_OPTIONS.map((status) => {
-                        const active = item.status === status.value;
+                        const active = normalizeStatus(item.status) === status.value;
                         const disabled = updatingId === item.id;
 
                         return (

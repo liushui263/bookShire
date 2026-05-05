@@ -5,19 +5,44 @@ import { useMemo, useState } from "react";
 import type { ReadingStatus, UserBook } from "@/lib/api";
 import { removeUserBook, updateUserBookStatus } from "@/lib/api";
 
-const STATUS_LABELS: Record<ReadingStatus, string> = {
-  unread: "Unread",
+type ShelfStatus =
+  | "unread"
+  | "want_to_read"
+  | "reading"
+  | "read"
+  | "finished"
+  | "abandoned";
+
+const STATUS_LABELS: Record<ShelfStatus, string> = {
+  unread: "Want to Read",
+  want_to_read: "Want to Read",
   reading: "Reading",
-  read: "Read",
+  read: "Finished",
+  finished: "Finished",
   abandoned: "Abandoned",
 };
 
-const STATUS_ORDER: ReadingStatus[] = [
+const STATUS_ORDER: ShelfStatus[] = [
   "unread",
   "reading",
-  "read",
+  "finished",
   "abandoned",
 ];
+
+function normalizeStatus(status?: string | null): ShelfStatus {
+  if (status === "want_to_read") return "unread";
+  if (status === "read") return "finished";
+  if (status === "finished") return "finished";
+  if (status === "reading") return "reading";
+  if (status === "abandoned") return "abandoned";
+  return "unread";
+}
+
+function toApiStatus(status: ShelfStatus): ReadingStatus {
+  if (status === "want_to_read") return "unread" as ReadingStatus;
+  if (status === "finished") return "read" as ReadingStatus;
+  return status as ReadingStatus;
+}
 
 type ShelfClientProps = {
   initialItems: UserBook[];
@@ -47,22 +72,24 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
-    const result: Record<ReadingStatus, UserBook[]> = {
+    const result: Record<ShelfStatus, UserBook[]> = {
       unread: [],
+      want_to_read: [],
       reading: [],
       read: [],
+      finished: [],
       abandoned: [],
     };
 
     for (const item of items) {
-      const status = item.status || "unread";
+      const status = normalizeStatus(item.status);
       result[status].push(item);
     }
 
     return result;
   }, [items]);
 
-  async function handleStatusChange(item: UserBook, status: ReadingStatus) {
+  async function handleStatusChange(item: UserBook, status: ShelfStatus) {
     const userBookId = item.id;
     const key = `${userBookId}:status`;
 
@@ -70,7 +97,8 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
     setMessage(null);
 
     try {
-      const updated = await updateUserBookStatus(userId, userBookId, status);
+      const apiStatus = toApiStatus(status);
+      const updated = await updateUserBookStatus(userId, userBookId, apiStatus);
 
       setItems((current) =>
         current.map((entry) =>
@@ -78,7 +106,7 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
             ? {
                 ...entry,
                 ...updated,
-                status,
+                status: apiStatus,
               }
             : entry
         )
@@ -217,7 +245,7 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
                               </div>
 
                               <span className="shrink-0 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">
-                                {STATUS_LABELS[item.status]}
+                                {STATUS_LABELS[normalizeStatus(item.status)]}
                               </span>
                             </div>
 
@@ -287,12 +315,12 @@ export function ShelfClient({ initialItems, userId }: ShelfClientProps) {
 
                             <div className="mt-5 flex flex-wrap gap-2">
                               <select
-                                value={item.status}
+                                value={normalizeStatus(item.status)}
                                 disabled={isBusy}
                                 onChange={(event) =>
                                   handleStatusChange(
                                     item,
-                                    event.target.value as ReadingStatus
+                                    event.target.value as ShelfStatus
                                   )
                                 }
                                 className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"

@@ -81,3 +81,8 @@ Then restart Expo with cache cleared:
 cd mobile
 npx expo start -c
 ```
+
+
+## v3 hydration fix
+
+Fixed a Next.js hydration mismatch on `/shelf` caused by formatting `updated_at` with `date.toLocaleString()` without an explicit timezone. The server and browser can run in different time zones, so the server rendered one timestamp while the client rendered another. `frontend/components/ShelfClient.tsx` now formats dates with `Intl.DateTimeFormat` and `timeZone: "America/Chicago"` for deterministic SSR/client output.
