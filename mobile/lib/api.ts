@@ -42,7 +42,19 @@ export type Book = {
   categories?: string[] | null;
 };
 
-export type ReadingStatus = "unread" | "reading" | "read" | "abandoned";
+export type ReadingStatus = "unread" | "want_to_read" | "reading" | "read" | "finished" | "abandoned";
+
+export type Review = {
+  id: string;
+  user_id: string;
+  book_id: string;
+  edition_id?: string | null;
+  rating?: number | null;
+  content?: string | null;
+  visibility: string;
+  created_at: string;
+  updated_at: string;
+};
 
 export type UserBook = {
   id: string;
@@ -103,47 +115,93 @@ export function getBook(bookId: string): Promise<Book> {
 
 export function searchBooks(query: string): Promise<Book[]> {
   return fetchJson<Book[]>(
-    `/api/v1/books/search?q=${encodeURIComponent(query)}`
+    `/api/v1/books/search?q=${encodeURIComponent(query)}`,
   );
 }
 
 export function getUserBooks(userId: string): Promise<UserBook[]> {
   return fetchJson<UserBook[]>(
-    `/api/v1/users/${encodeURIComponent(userId)}/books`
+    `/api/v1/users/${encodeURIComponent(userId)}/books`,
   );
 }
 
 export function addBookToShelf(
   userId: string,
-  bookId: string
+  bookId: string,
 ): Promise<UserBook> {
   return fetchJson<UserBook>(
     `/api/v1/users/${encodeURIComponent(userId)}/books/by-book/${encodeURIComponent(bookId)}`,
-    { method: "POST" }
+    { method: "POST" },
   );
 }
 
 export function updateUserBookStatus(
   userId: string,
   userBookId: string,
-  status: ReadingStatus
+  status: ReadingStatus,
 ): Promise<UserBook> {
   return fetchJson<UserBook>(
     `/api/v1/users/${encodeURIComponent(userId)}/books/${encodeURIComponent(userBookId)}`,
     {
       method: "PATCH",
       body: JSON.stringify({ status }),
-    }
+    },
   );
 }
 
-
 export function removeUserBook(
   userId: string,
-  userBookId: string
+  userBookId: string,
 ): Promise<UserBook> {
   return fetchJson<UserBook>(
     `/api/v1/users/${encodeURIComponent(userId)}/books/${encodeURIComponent(userBookId)}`,
-    { method: "DELETE" }
+    { method: "DELETE" },
+  );
+}
+
+export function getBookReviews(bookId: string): Promise<Review[]> {
+  return fetchJson<Review[]>(
+    `/api/v1/books/${encodeURIComponent(bookId)}/reviews`,
+  );
+}
+
+export function createBookReview(
+  bookId: string,
+  payload: {
+    user_id: string;
+    rating?: number | null;
+    content?: string | null;
+    visibility?: "private" | "friends" | "public";
+  },
+): Promise<Review> {
+  return fetchJson<Review>(
+    `/api/v1/books/${encodeURIComponent(bookId)}/reviews`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        visibility: "public",
+        ...payload,
+      }),
+    },
+  );
+}
+
+export function updateReview(
+  reviewId: string,
+  payload: {
+    rating?: number | null;
+    content?: string | null;
+    visibility?: "private" | "friends" | "public";
+  },
+): Promise<Review> {
+  return fetchJson<Review>(
+    `/api/v1/reviews/${encodeURIComponent(reviewId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        visibility: "public",
+        ...payload,
+      }),
+    },
   );
 }
