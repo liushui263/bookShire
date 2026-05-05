@@ -29,3 +29,5 @@ frontend/.next
 
 # Local env
 frontend/.env.local
+
+mobile/node_modules
