@@ -1,5 +1,31 @@
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
+
+function getApiBaseUrl() {
+  const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+
+  if (configured) return configured.replace(/\/$/, "");
+
+  if (Platform.OS === "android") return "http://10.0.2.2:8000";
+
+  const expoConstants = Constants as unknown as {
+    expoConfig?: { hostUri?: string };
+    manifest2?: { extra?: { expoClient?: { hostUri?: string } } };
+    manifest?: { debuggerHost?: string };
+  };
+
+  const hostUri =
+    expoConstants.expoConfig?.hostUri ||
+    expoConstants.manifest2?.extra?.expoClient?.hostUri ||
+    expoConstants.manifest?.debuggerHost;
+
+  const host = hostUri?.split(":")[0];
+  if (host) return `http://${host}:8000`;
+
+  return "http://localhost:8000";
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 export type Book = {
   id: string;
@@ -72,7 +98,7 @@ export function getBooks(): Promise<Book[]> {
 }
 
 export function getBook(bookId: string): Promise<Book> {
-  return fetchJson<Book[]>(`/api/v1/books/${encodeURIComponent(bookId)}`) as unknown as Promise<Book>;
+  return fetchJson<Book>(`/api/v1/books/${encodeURIComponent(bookId)}`);
 }
 
 export function searchBooks(query: string): Promise<Book[]> {
@@ -108,5 +134,16 @@ export function updateUserBookStatus(
       method: "PATCH",
       body: JSON.stringify({ status }),
     }
+  );
+}
+
+
+export function removeUserBook(
+  userId: string,
+  userBookId: string
+): Promise<UserBook> {
+  return fetchJson<UserBook>(
+    `/api/v1/users/${encodeURIComponent(userId)}/books/${encodeURIComponent(userBookId)}`,
+    { method: "DELETE" }
   );
 }

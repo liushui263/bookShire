@@ -26,6 +26,10 @@ class Book(Base):
 
     editions = relationship("Edition", back_populates="book")
 
+    @property
+    def rating_avg(self):
+        return self.avg_rating
+
 
 class Edition(Base):
     __tablename__ = "editions"

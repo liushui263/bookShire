@@ -6,7 +6,7 @@ type BookCardProps = {
 };
 
 export function BookCard({ book }: BookCardProps) {
-  const tags = book.tags || book.categories || [];
+  const labels = Array.from(new Set([...(book.categories || []), ...(book.tags || [])]));
   const coverUrl = book.cover_url || book.canonical_cover_url;
 
   return (
@@ -48,9 +48,9 @@ export function BookCard({ book }: BookCardProps) {
             )}
           </div>
 
-          {tags.length > 0 && (
+          {labels.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {tags.slice(0, 3).map((tag) => (
+              {labels.slice(0, 4).map((tag) => (
                 <span
                   key={tag}
                   className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600"

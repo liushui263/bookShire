@@ -53,7 +53,9 @@ def add_user_book(db: Session, user_id: UUID, payload: UserBookCreate):
     )
 
     try:
-        return user_book_repo.create_user_book(db, user_book)
+        created = user_book_repo.create_user_book(db, user_book)
+        shelf_item = user_book_repo.get_user_book_shelf_item(db, user_id, created.id)
+        return shelf_item or created
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(
@@ -72,7 +74,9 @@ def update_user_book(db: Session, user_id: UUID, user_book_id: UUID, payload: Us
     _validate_status(data.get("status"))
     _validate_visibility(data.get("visibility"))
 
-    return user_book_repo.update_user_book(db, user_book, data)
+    updated = user_book_repo.update_user_book(db, user_book, data)
+    shelf_item = user_book_repo.get_user_book_shelf_item(db, user_id, updated.id)
+    return shelf_item or updated
 
 
 def remove_user_book(db: Session, user_id: UUID, user_book_id: UUID):
@@ -110,7 +114,8 @@ def add_user_book_by_book_id(db: Session, user_id: UUID, book_id: UUID, status: 
         db, user_id, edition.id
     )
     if existing:
-        return existing
+        shelf_item = user_book_repo.get_user_book_shelf_item(db, user_id, existing.id)
+        return shelf_item or existing
 
     user_book = UserBook(
         user_id=user_id,
@@ -122,7 +127,9 @@ def add_user_book_by_book_id(db: Session, user_id: UUID, book_id: UUID, status: 
     )
 
     try:
-        return user_book_repo.create_user_book(db, user_book)
+        created = user_book_repo.create_user_book(db, user_book)
+        shelf_item = user_book_repo.get_user_book_shelf_item(db, user_id, created.id)
+        return shelf_item or created
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(

@@ -31,6 +31,9 @@ class BookOut(BaseModel):
     original_language: Optional[str] = None
     canonical_cover_url: Optional[str] = None
     canonical_description: Optional[str] = None
+    avg_rating: Optional[float] = None
+    rating_avg: Optional[float] = None
+    rating_count: Optional[int] = None
     categories: List[str] = []
     tags: List[str] = []
 

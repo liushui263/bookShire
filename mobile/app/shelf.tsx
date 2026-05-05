@@ -11,18 +11,20 @@ import {
 
 import {
   getUserBooks,
+  removeUserBook,
   updateUserBookStatus,
-  UserBook,
+  type ReadingStatus,
+  type UserBook,
 } from "../lib/api";
 
 const DEMO_USER_ID =
   process.env.EXPO_PUBLIC_DEMO_USER_ID ||
   "86f7818b-788e-4d0b-9e81-9c8bc918ac44";
 
-const STATUS_OPTIONS = [
-  { value: "want_to_read", label: "Want to Read" },
+const STATUS_OPTIONS: { value: ReadingStatus; label: string }[] = [
+  { value: "unread", label: "Want to Read" },
   { value: "reading", label: "Reading" },
-  { value: "finished", label: "Finished" },
+  { value: "read", label: "Finished" },
   { value: "abandoned", label: "Abandoned" },
 ];
 
@@ -62,7 +64,7 @@ export default function MobileShelfScreen() {
     }
   }
 
-  async function handleStatusChange(userBookId: string, status: string) {
+  async function handleStatusChange(userBookId: string, status: ReadingStatus) {
     try {
       setUpdatingId(userBookId);
       setMessage(null);
@@ -75,13 +77,30 @@ export default function MobileShelfScreen() {
       );
 
       setItems((current) =>
-        current.map((item) => (item.id === userBookId ? updated : item))
+        current.map((item) => (item.id === userBookId ? { ...item, ...updated, status } : item))
       );
 
       setMessage("Shelf item updated.");
     } catch (err) {
       console.error(err);
       setError("Failed to update shelf item.");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function handleRemove(userBookId: string) {
+    try {
+      setUpdatingId(userBookId);
+      setMessage(null);
+      setError(null);
+
+      await removeUserBook(DEMO_USER_ID, userBookId);
+      setItems((current) => current.filter((item) => item.id !== userBookId));
+      setMessage("Removed from My Shelf.");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to remove shelf item.");
     } finally {
       setUpdatingId(null);
     }
@@ -224,6 +243,14 @@ export default function MobileShelfScreen() {
                       })}
                     </View>
                   </View>
+
+                  <Pressable
+                    style={[styles.removeButton, updatingId === item.id ? styles.statusButtonDisabled : null]}
+                    disabled={updatingId === item.id}
+                    onPress={() => handleRemove(item.id)}
+                  >
+                    <Text style={styles.removeButtonText}>Remove from Shelf</Text>
+                  </Pressable>
                 </View>
               );
             })
@@ -373,6 +400,19 @@ const styles = StyleSheet.create({
   },
   statusButtonTextActive: {
     color: "white",
+  },
+  removeButton: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    backgroundColor: "#fef2f2",
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  removeButtonText: {
+    color: "#b91c1c",
+    fontWeight: "800",
   },
   success: {
     color: "#166534",

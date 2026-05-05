@@ -30,13 +30,15 @@ function formatDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
 
-  return date.toLocaleString("en-US", {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  });
+    hour12: true,
+  }).format(date);
 }
 
 export function ShelfClient({ initialItems, userId }: ShelfClientProps) {

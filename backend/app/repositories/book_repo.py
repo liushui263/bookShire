@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import or_
+from sqlalchemy import Text, cast, or_
 from sqlalchemy.orm import Session
 
 from app.models.book import Book, Edition
@@ -71,27 +71,27 @@ def list_user_books(db: Session, user_id: UUID) -> List[UserBook]:
 def get_book_by_id(db: Session, book_id: UUID) -> Optional[Book]:
     return db.query(Book).filter(Book.id == book_id).first()
 
-
 def search_books(db: Session, q: str, limit: int = 20) -> List[Book]:
-    keyword = f"%{q.strip()}%"
-
-    filters = []
-
-    if hasattr(Book, "title"):
-        filters.append(Book.title.ilike(keyword))
-
-    if hasattr(Book, "subtitle"):
-        filters.append(Book.subtitle.ilike(keyword))
-
-    if hasattr(Book, "normalized_title"):
-        filters.append(Book.normalized_title.ilike(keyword))
-
-    if not filters:
+    """Search books by title, subtitle, normalized title, category, tag, or description."""
+    cleaned = q.strip()
+    if not cleaned:
         return []
+
+    keyword = f"%{cleaned}%"
+
+    filters = [
+        Book.title.ilike(keyword),
+        Book.subtitle.ilike(keyword),
+        Book.normalized_title.ilike(keyword),
+        cast(Book.categories, Text).ilike(keyword),
+        cast(Book.tags, Text).ilike(keyword),
+        Book.canonical_description.ilike(keyword),
+    ]
 
     return (
         db.query(Book)
         .filter(or_(*filters))
+        .order_by(Book.title.asc())
         .limit(limit)
         .all()
     )
