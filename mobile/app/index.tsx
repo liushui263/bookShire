@@ -1,249 +1,97 @@
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
+import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
+
+import { Book, getBooks, getErrorMessage } from "../lib/api";
+import { BookListCard } from "../components/BookListCard";
 import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Link } from "expo-router";
-import { Book, getBooks } from "../lib/api";
+  ActionButton,
+  AppHeader,
+  EmptyCard,
+  ErrorCard,
+  LoadingCard,
+  SectionHeader,
+} from "../components/UiPrimitives";
 
 export default function HomeScreen() {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadBooks() {
-      try {
-        setIsLoading(true);
-        setErrorMessage(null);
-        const data = await getBooks();
-        setBooks(data);
-      } catch (error) {
-        setErrorMessage(
-          error instanceof Error ? error.message : "Failed to load books."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }
+  const featuredBooks = useMemo(() => books.slice(0, 20), [books]);
 
-    loadBooks();
-  }, []);
+  async function loadBooks({ quiet = false }: { quiet?: boolean } = {}) {
+    try {
+      quiet ? setIsRefreshing(true) : setIsLoading(true);
+      setErrorMessage(null);
+      setBooks(await getBooks());
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Failed to load books."));
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBooks();
+    }, []),
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.kicker}>BookShire</Text>
-        <Text style={styles.title}>Build your personal book world.</Text>
-        <Text style={styles.subtitle}>
-          Browse books from the same FastAPI backend used by the web app.
-        </Text>
+      <FlatList
+        data={!isLoading && !errorMessage ? featuredBooks : []}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.container}
+        ListHeaderComponent={
+          <View style={styles.headerBlock}>
+            <AppHeader
+              title="Build your personal book world."
+              subtitle="Browse, search, review, and manage your shelf from the same FastAPI backend used by the web app."
+            />
 
-        <View style={styles.navRow}>
-          <Link href="/search" asChild>
-            <Pressable style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Search</Text>
-            </Pressable>
-          </Link>
+            <View style={styles.navButtons}>
+              <ActionButton label="Search" variant="primary" href="/search" />
+              <ActionButton label="My Shelf" href="/shelf" />
+              <ActionButton
+                label={isRefreshing ? "Refreshing..." : "Refresh"}
+                disabled={isRefreshing || isLoading}
+                onPress={() => loadBooks({ quiet: true })}
+              />
+            </View>
 
-          <Link href="/shelf" asChild>
-            <Pressable style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>My Shelf</Text>
-            </Pressable>
-          </Link>
-        </View>
+            {isLoading ? <LoadingCard label="Loading books..." /> : null}
+            {errorMessage ? (
+              <ErrorCard
+                title="Book API failed"
+                message={errorMessage}
+                onRetry={() => loadBooks()}
+              />
+            ) : null}
+            {!isLoading && !errorMessage && books.length === 0 ? (
+              <EmptyCard
+                title="No books yet."
+                message="The backend is reachable, but it returned an empty book list. Add seed data or create a book from the API."
+              />
+            ) : null}
 
-        {isLoading && (
-          <View style={styles.centerBox}>
-            <ActivityIndicator />
-            <Text style={styles.mutedText}>Loading books...</Text>
+            {!isLoading && !errorMessage && books.length > 0 ? (
+              <SectionHeader title="Available Books" count={books.length} />
+            ) : null}
           </View>
-        )}
-
-        {errorMessage && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>Book API failed</Text>
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          </View>
-        )}
-
-        {!isLoading && !errorMessage && (
-          <FlatList
-            data={books}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => {
-              const tags = item.tags || item.categories || [];
-
-              return (
-                <Link href={`/books/${item.id}`} asChild>
-                  <Pressable style={styles.card}>
-                    <View style={styles.cover}>
-                      <Text style={styles.coverText}>Cover</Text>
-                    </View>
-
-                    <View style={styles.cardBody}>
-                      <Text style={styles.bookTitle}>{item.title}</Text>
-                      {item.subtitle ? (
-                        <Text style={styles.bookSubtitle}>{item.subtitle}</Text>
-                      ) : null}
-
-                      <View style={styles.tagRow}>
-                        {tags.slice(0, 3).map((tag) => (
-                          <Text key={tag} style={styles.tag}>
-                            {tag}
-                          </Text>
-                        ))}
-                      </View>
-                    </View>
-                  </Pressable>
-                </Link>
-              );
-            }}
-          />
-        )}
-      </View>
+        }
+        renderItem={({ item }) => <BookListCard book={item} maxTags={4} />}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#f9fafb",
-  },
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  kicker: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#6b7280",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  title: {
-    marginTop: 10,
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: "800",
-    color: "#030712",
-  },
-  subtitle: {
-    marginTop: 12,
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#4b5563",
-  },
-  navRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  primaryButton: {
-    backgroundColor: "#030712",
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-  },
-  primaryButtonText: {
-    color: "white",
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-  },
-  secondaryButtonText: {
-    color: "#111827",
-    fontWeight: "700",
-  },
-  centerBox: {
-    marginTop: 30,
-    alignItems: "center",
-    gap: 10,
-  },
-  mutedText: {
-    color: "#6b7280",
-  },
-  errorBox: {
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: "#fef2f2",
-    borderWidth: 1,
-    borderColor: "#fecaca",
-  },
-  errorTitle: {
-    fontWeight: "800",
-    color: "#7f1d1d",
-  },
-  errorText: {
-    marginTop: 8,
-    color: "#991b1b",
-    fontSize: 12,
-  },
-  listContent: {
-    gap: 14,
-    paddingBottom: 40,
-  },
-  card: {
-    flexDirection: "row",
-    gap: 14,
-    padding: 14,
-    borderRadius: 20,
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  cover: {
-    width: 64,
-    height: 92,
-    borderRadius: 14,
-    backgroundColor: "#f3f4f6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverText: {
-    fontSize: 12,
-    color: "#9ca3af",
-  },
-  cardBody: {
-    flex: 1,
-  },
-  bookTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#111827",
-  },
-  bookSubtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    color: "#6b7280",
-  },
-  tagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 10,
-  },
-  tag: {
-    backgroundColor: "#f3f4f6",
-    color: "#4b5563",
-    fontSize: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 999,
-  },
+  safeArea: { flex: 1, backgroundColor: "#f8fafc" },
+  container: { padding: 20, paddingBottom: 48, gap: 14 },
+  headerBlock: { gap: 14 },
+  navButtons: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
 });

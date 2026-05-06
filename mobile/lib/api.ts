@@ -25,7 +25,40 @@ function getApiBaseUrl() {
   return "http://localhost:8000";
 }
 
-const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = getApiBaseUrl();
+
+export class ApiError extends Error {
+  status: number;
+  statusText: string;
+  detail: string;
+
+  constructor(status: number, statusText: string, detail: string) {
+    super(`API request failed: ${detail}`);
+    this.name = "ApiError";
+    this.status = status;
+    this.statusText = statusText;
+    this.detail = detail;
+  }
+}
+
+export function getErrorMessage(error: unknown, fallback = "Something went wrong."): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
+async function readErrorDetail(res: Response): Promise<string> {
+  let detail = `${res.status} ${res.statusText}`;
+
+  try {
+    const body = await res.json();
+    detail = body.detail ? JSON.stringify(body.detail) : JSON.stringify(body);
+  } catch {
+    // Keep HTTP detail.
+  }
+
+  return detail;
+}
 
 export type Book = {
   id: string;
@@ -42,6 +75,8 @@ export type Book = {
   categories?: string[] | null;
 };
 
+// Backend currently uses older persisted values: "unread" and "read".
+// Mobile UI normalizes them through lib/shelfStatus.ts as "want_to_read" and "finished".
 export type ReadingStatus = "unread" | "want_to_read" | "reading" | "read" | "finished" | "abandoned";
 
 export type Review = {
@@ -63,7 +98,7 @@ export type UserBook = {
   status: ReadingStatus;
   condition?: number | null;
   visibility: string;
-  personal_tags: string[];
+  personal_tags?: string[] | null;
   personal_notes_summary?: string | null;
   created_at: string;
   updated_at: string;
@@ -72,8 +107,8 @@ export type UserBook = {
   book_title: string;
   book_subtitle?: string | null;
   book_cover_url?: string | null;
-  book_tags: string[];
-  book_categories: string[];
+  book_tags?: string[] | null;
+  book_categories?: string[] | null;
 
   edition_title?: string | null;
   edition_language?: string | null;
@@ -90,19 +125,20 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    let detail = `${res.status} ${res.statusText}`;
-
-    try {
-      const body = await res.json();
-      detail = body.detail ? JSON.stringify(body.detail) : JSON.stringify(body);
-    } catch {
-      // Keep HTTP detail.
-    }
-
-    throw new Error(`API request failed: ${detail}`);
+    throw new ApiError(res.status, res.statusText, await readErrorDetail(res));
   }
 
-  return res.json();
+  // Support both JSON responses and 204/empty responses.
+  if (res.status === 204) {
+    return null as T;
+  }
+
+  const text = await res.text();
+  if (!text) {
+    return null as T;
+  }
+
+  return JSON.parse(text) as T;
 }
 
 export function getBooks(): Promise<Book[]> {
@@ -128,8 +164,8 @@ export function getUserBooks(userId: string): Promise<UserBook[]> {
 export function addBookToShelf(
   userId: string,
   bookId: string,
-): Promise<UserBook> {
-  return fetchJson<UserBook>(
+): Promise<UserBook | null> {
+  return fetchJson<UserBook | null>(
     `/api/v1/users/${encodeURIComponent(userId)}/books/by-book/${encodeURIComponent(bookId)}`,
     { method: "POST" },
   );
@@ -139,8 +175,8 @@ export function updateUserBookStatus(
   userId: string,
   userBookId: string,
   status: ReadingStatus,
-): Promise<UserBook> {
-  return fetchJson<UserBook>(
+): Promise<UserBook | null> {
+  return fetchJson<UserBook | null>(
     `/api/v1/users/${encodeURIComponent(userId)}/books/${encodeURIComponent(userBookId)}`,
     {
       method: "PATCH",
@@ -152,8 +188,8 @@ export function updateUserBookStatus(
 export function removeUserBook(
   userId: string,
   userBookId: string,
-): Promise<UserBook> {
-  return fetchJson<UserBook>(
+): Promise<UserBook | null> {
+  return fetchJson<UserBook | null>(
     `/api/v1/users/${encodeURIComponent(userId)}/books/${encodeURIComponent(userBookId)}`,
     { method: "DELETE" },
   );
@@ -204,4 +240,25 @@ export function updateReview(
       }),
     },
   );
+}
+
+export async function deleteReview(reviewId: string): Promise<Review | null> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/reviews/${encodeURIComponent(reviewId)}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(res.status, res.statusText, await readErrorDetail(res));
+  }
+
+  // Some backends return the deleted review; others return 204 No Content.
+  if (res.status === 204) return null;
+
+  const text = await res.text();
+  if (!text) return null;
+
+  return JSON.parse(text) as Review;
 }
